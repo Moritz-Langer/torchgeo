@@ -1,9 +1,10 @@
 # required
 einops==0.3.0
 fiona==1.8.22
+jsonargparse[signatures]==4.25.0
 kornia==0.7.4
 lightly==1.4.5
-lightning[pytorch-extra]==2.0.0
+lightning==2.0.0
 matplotlib==3.6.0
 numpy==1.23.2
 pandas==1.5.0
