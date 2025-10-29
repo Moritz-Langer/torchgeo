@@ -38,7 +38,11 @@ class TestLEVIRCDPlusDataModule:
     def datamodule(self) -> LEVIRCDPlusDataModule:
         root = os.path.join('tests', 'data', 'levircd', 'levircdplus')
         dm = LEVIRCDPlusDataModule(
-            root=root, num_workers=0, val_split_pct=0.5, transforms=transforms
+            root=root,
+            batch_size=1,
+            num_workers=0,
+            val_split_pct=0.5,
+            transforms=transforms,
         )
         dm.prepare_data()
         dm.trainer = Trainer(accelerator='cpu', max_epochs=1)
@@ -89,7 +93,9 @@ class TestLEVIRCDDataModule:
     @pytest.fixture
     def datamodule(self) -> LEVIRCDDataModule:
         root = os.path.join('tests', 'data', 'levircd', 'levircd')
-        dm = LEVIRCDDataModule(root=root, num_workers=0, transforms=transforms)
+        dm = LEVIRCDDataModule(
+            root=root, batch_size=1, num_workers=0, transforms=transforms
+        )
         dm.prepare_data()
         dm.trainer = Trainer(accelerator='cpu', max_epochs=1)
         return dm

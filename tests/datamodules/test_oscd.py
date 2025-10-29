@@ -20,7 +20,7 @@ class TestOSCDDataModule:
             root=root,
             download=True,
             bands=bands,
-            batch_size=2,
+            batch_size=1,
             patch_size=8,
             val_split_pct=0.5,
             num_workers=0,
