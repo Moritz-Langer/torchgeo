@@ -290,6 +290,10 @@ class GridGeoSampler(GeoSampler):
                     xmin = bounds[0] + j * self.stride[1]
                     xmax = xmin + self.size[1]
 
+                    chip_polygon = shapely.box(xmin, ymin, xmax, ymax)
+                    if not self.roi.intersects(chip_polygon):
+                        continue
+
                     yield slice(xmin, xmax), slice(ymin, ymax), slice(tmin, tmax)
 
     def __len__(self) -> int:
