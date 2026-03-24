@@ -256,14 +256,38 @@ class GridGeoSampler(GeoSampler):
             self.size = (self.size[0] * self.res[1], self.size[1] * self.res[0])
             self.stride = (self.stride[0] * self.res[1], self.stride[1] * self.res[0])
 
-        self.length = 0
-        for i in range(len(self.index)):
-            bounds = self.index.geometry.iloc[i].bounds
+        self.chips =[]
+        for idx in range(len(self.index)):
+            bounds = self.index.geometry.iloc[idx].bounds
             xmin, ymin, xmax, ymax = bounds
             if xmax - xmin < self.size[1] or ymax - ymin < self.size[0]:
                 continue
+
+            tmin, tmax = self.index.index[idx].left, self.index.index[idx].right
             rows, cols = tile_to_chips(bounds, self.size, self.stride)
-            self.length += rows * cols
+
+            # Generate grid of coordinates
+            col_ids, row_ids = np.meshgrid(np.arange(cols), np.arange(rows))
+            xmins = bounds[0] + col_ids.ravel() * self.stride[1]
+            ymins = bounds[1] + row_ids.ravel() * self.stride[0]
+            xmaxs = xmins + self.size[1]
+            ymaxs = ymins + self.size[0]
+
+            # Vectorized spatial intersection mask
+            chip_polys = shapely.box(xmins, ymins, xmaxs, ymaxs)
+            valid_mask = shapely.intersects(chip_polys, self.roi)
+
+            # Store only intersecting geometries
+            for r_xmin, r_ymin, r_xmax, r_ymax in zip(xmins[valid_mask],
+                                                      ymins[valid_mask],
+                                                      xmaxs[valid_mask],
+                                                      ymaxs[valid_mask]):
+
+                self.chips.append((slice(r_xmin, r_xmax),
+                                   slice(r_ymin, r_ymax),
+                                   slice(tmin, tmax)))
+
+        self.length = len(self.chips)
 
     def __iter__(self) -> Iterator[tuple[slice, slice, slice]]:
         """Return the index of a dataset.
@@ -271,29 +295,7 @@ class GridGeoSampler(GeoSampler):
         Yields:
             [xmin:xmax, ymin:ymax, tmin:tmax] coordinates to index a dataset.
         """
-        # For each tile...
-        for i in range(len(self.index)):
-            bounds = self.index.geometry.iloc[i].bounds
-            xmin, ymin, xmax, ymax = bounds
-            if xmax - xmin < self.size[1] or ymax - ymin < self.size[0]:
-                continue
-            tmin, tmax = self.index.index[i].left, self.index.index[i].right
-            rows, cols = tile_to_chips(bounds, self.size, self.stride)
-
-            # For each row...
-            for i in range(rows):
-                ymin = bounds[1] + i * self.stride[0]
-                ymax = ymin + self.size[0]
-
-                # For each column...
-                for j in range(cols):
-                    xmin = bounds[0] + j * self.stride[1]
-                    xmax = xmin + self.size[1]
-                    chip_polygon = shapely.box(xmin, ymin, xmax, ymax)
-                    if not self.roi.intersects(chip_polygon):
-                        continue
-
-                    yield slice(xmin, xmax), slice(ymin, ymax), slice(tmin, tmax)
+        yield from self.chips
 
     def __len__(self) -> int:
         """Return the number of samples over the ROI.
